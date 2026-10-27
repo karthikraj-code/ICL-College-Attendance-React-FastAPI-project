@@ -1,0 +1,23 @@
+# Secrets — never commit real passwords
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.env.local
+
+# Node / React
+frontend/node_modules/
+frontend/build/
+frontend/dist/
+npm-debug.log*
+
+# Docker / OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.log

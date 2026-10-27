@@ -1,0 +1,72 @@
+# Start the whole app with: docker compose up --build
+#
+# FastAPI connects to MySQL using the Compose service name:
+#   DB_HOST=mysql
+# not localhost.
+#
+# Port 3306 is NOT published. MySQL is only reachable on the Compose network.
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: attendance-mysql
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./mysql/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    networks:
+      - attendance-net
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 25s
+
+  backend:
+    build:
+      context: ./backend
+    container_name: attendance-backend
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      # Forced inside Compose so the backend never uses a laptop MySQL.
+      DB_HOST: mysql
+      DB_PORT: "3306"
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_NAME: ${DB_NAME}
+    ports:
+      - "8000:8000"
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - attendance-net
+
+  frontend:
+    build:
+      context: ./frontend
+    container_name: attendance-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    networks:
+      - attendance-net
+
+networks:
+  attendance-net:
+    driver: bridge
+
+volumes:
+  mysql_data:
